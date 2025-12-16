@@ -1,0 +1,5 @@
+{
+  "MockUSDTModule#MockUSDT": "0x59a2fB83F0f92480702EDEE8f84c72a1eF44BD9b",
+  "TokenModule#PlatformToken": "0x0470FF2ee65F43799fe4459840723a912137eE59",
+  "PoolManagerUSDTModule#PoolManager": "0x4935FD3245feeA9A64a89A03f38c593b240Becd4"
+}

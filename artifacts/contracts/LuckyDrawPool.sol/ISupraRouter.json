@@ -1,0 +1,48 @@
+{
+  "_format": "hh3-artifact-1",
+  "contractName": "ISupraRouter",
+  "sourceName": "contracts/LuckyDrawPool.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "_functionSig",
+          "type": "string"
+        },
+        {
+          "internalType": "uint8",
+          "name": "_rngCount",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_numConfirmations",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_clientWalletAddress",
+          "type": "address"
+        }
+      ],
+      "name": "generateRequest",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {},
+  "immutableReferences": {},
+  "inputSourceName": "project/contracts/LuckyDrawPool.sol",
+  "buildInfoId": "solc-0_8_28-665a87428586a857f03fd95190b5fa154ed16fac"
+}
