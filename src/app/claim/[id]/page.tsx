@@ -233,14 +233,15 @@ export default function ClaimTicketPage() {
                 <div style={{ 
                   position: "relative", 
                   height: "200px",
-                  backgroundColor: "#f5f5f5",
+                  backgroundColor: "#000",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  fontSize: "48px",
+                  fontWeight: 800,
                 }}>
-                  <Image
-                    src={pool.event.imageUrl}
-                    alt={pool.event.name}
-                    fill
-                    style={{ objectFit: "cover" }}
-                  />
+                  {pool.event.category}
                 </div>
                 <div style={{ padding: "24px" }}>
                   <div style={{
