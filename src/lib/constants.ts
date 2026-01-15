@@ -48,10 +48,10 @@ export const MANTLE_TESTNET = {
 // 
 export const CONTRACT_ADDRESSES = {
   // Simple unified contract (everything in one!)
-  POOL_MANAGER: "0xe4478d8dcab3f8daf7b167d21fadc7e3f20599da", // SimplePoolManager with built-in TLOOT
+  POOL_MANAGER: "0x491e9d48ed1e97359652bf25d6af9bb0c455b7da", // SimplePoolManager with built-in TLOOT
   
   // Token contracts
-  TOKEN: "0xe4478d8dcab3f8daf7b167d21fadc7e3f20599da", // TLOOT is built into PoolManager (Aave-style)
+  TOKEN: "0x491e9d48ed1e97359652bf25d6af9bb0c455b7da", // TLOOT is built into PoolManager (Aave-style)
   USDT: "0x59a2fB83F0f92480702EDEE8f84c72a1eF44BD9b", // MockUSDT
   
   // Supra dVRF

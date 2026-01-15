@@ -16,10 +16,18 @@ export const SIMPLE_POOL_MANAGER_ABI = [
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "poolId", "type": "uint256" },
-      { "internalType": "uint256", "name": "amount", "type": "uint256" }
+      { "internalType": "uint256", "name": "poolId", "type": "uint256" }
     ],
     "name": "joinPool",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "poolId", "type": "uint256" }
+    ],
+    "name": "completePayment",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -90,6 +98,16 @@ export const SIMPLE_POOL_MANAGER_ABI = [
     "type": "function"
   },
   {
+    "inputs": [
+      { "internalType": "uint256", "name": "poolId", "type": "uint256" },
+      { "internalType": "address", "name": "user", "type": "address" }
+    ],
+    "name": "hasCompletedPayment",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [{ "internalType": "address", "name": "account", "type": "address" }],
     "name": "balanceOf",
     "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
@@ -137,6 +155,16 @@ export const SIMPLE_POOL_MANAGER_ABI = [
       { "indexed": false, "internalType": "uint256", "name": "tlootMinted", "type": "uint256" }
     ],
     "name": "UserJoined",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "poolId", "type": "uint256" },
+      { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "remainingAmount", "type": "uint256" }
+    ],
+    "name": "PaymentCompleted",
     "type": "event"
   },
   {

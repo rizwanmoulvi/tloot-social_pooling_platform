@@ -27,9 +27,6 @@ export default function PoolDetailPage() {
   const { pools, loadPools, getPoolById } = usePoolStore();
   const [isJoining, setIsJoining] = useState(false);
   
-  // State for variable contribution in CommitToClaim pools
-  const [contributionAmount, setContributionAmount] = useState<number>(0);
-  
   useEffect(() => {
     if (pools.length === 0) {
       loadPools();
@@ -49,15 +46,6 @@ export default function PoolDetailPage() {
   
   // Calculate remaining amount for Commit to Claim
   const remainingAmount = pool ? pool.targetAmount - pool.currentAmount : 0;
-  const minContribution = 1; // 1 USDT minimum
-  const maxContribution = isCommitToClaim ? (remainingAmount * 0.8) : pool?.entryAmount || 0;
-  
-  // Initialize contribution amount for CommitToClaim pools
-  useEffect(() => {
-    if (isCommitToClaim && remainingAmount > 0 && contributionAmount === 0) {
-      setContributionAmount(Math.min(minContribution, maxContribution));
-    }
-  }, [isCommitToClaim, remainingAmount, contributionAmount, minContribution, maxContribution]);
   
   if (!pool) {
     if (pools.length === 0) {
@@ -94,8 +82,8 @@ export default function PoolDetailPage() {
         transport: http("https://rpc.sepolia.mantle.xyz"),
       });
 
-      // For CommitToClaim: use variable contribution, for LuckyDraw: use fixed entryAmount
-      const amountToContribute = isCommitToClaim ? contributionAmount : pool.entryAmount;
+      // Use fixed entry amount for both pool types
+      const amountToContribute = pool.entryAmount;
       
       // Convert entry amount to USDT units (6 decimals)
       const entryAmountInUSDT = parseUnits(amountToContribute.toString(), 6);
@@ -142,7 +130,7 @@ export default function PoolDetailPage() {
         address: CONTRACT_ADDRESSES.POOL_MANAGER as `0x${string}`,
         abi: SIMPLE_POOL_MANAGER_ABI,
         functionName: 'joinPool',
-        args: [BigInt(poolId), entryAmountInUSDT],
+        args: [BigInt(poolId)],
         account,
       });
 
@@ -353,23 +341,23 @@ export default function PoolDetailPage() {
                     <>
                       <div style={stepStyle}>
                         <span style={stepNumberStyle}>1</span>
-                        <span>Reserve your ticket with a {formatCurrency(pool.commitmentAmount || 0)} commitment</span>
+                        <span>Pay initial commitment of {formatCurrency(pool.entryAmount)}</span>
                       </div>
                       <div style={stepStyle}>
                         <span style={stepNumberStyle}>2</span>
-                        <span>Once the pool fills, tickets are reserved for all participants</span>
+                        <span>Once enough people join, the pool finalizes and tickets are reserved</span>
                       </div>
                       <div style={stepStyle}>
                         <span style={stepNumberStyle}>3</span>
-                        <span>Complete the full payment before the deadline</span>
+                        <span>Complete remaining payment ({formatCurrency(pool.targetAmount - pool.entryAmount)}) before deadline</span>
                       </div>
                       <div style={stepStyle}>
                         <span style={stepNumberStyle}>4</span>
-                        <span>Receive your ticket upon successful payment</span>
+                        <span>Receive your ticket upon full payment completion</span>
                       </div>
                       <div style={stepStyle}>
                         <span style={stepNumberStyle}>5</span>
-                        <span>Miss the deadline? Commitment is slashed and redistributed</span>
+                        <span>Miss the deadline? Your commitment is slashed</span>
                       </div>
                     </>
                   )}
@@ -430,72 +418,21 @@ export default function PoolDetailPage() {
                     <CountdownTimer deadline={pool.deadline} />
                   </div>
 
-                  {/* Variable Contribution for Commit to Claim */}
-                  {isCommitToClaim && remainingAmount > 0 && (
-                    <div>
-                      <p style={{ ...labelStyle, marginBottom: "8px" }}>Contribution Amount</p>
-                      <div style={{ fontSize: "14px", color: "#666", marginBottom: "12px" }}>
-                        Choose your contribution: ${minContribution.toFixed(2)} to ${maxContribution.toFixed(2)} (80% of remaining)
-                      </div>
-                      <input
-                        type="range"
-                        min={minContribution}
-                        max={maxContribution}
-                        step={0.01}
-                        value={contributionAmount}
-                        onChange={(e) => setContributionAmount(parseFloat(e.target.value))}
-                        style={{ width: "100%", marginBottom: "12px" }}
-                      />
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                        <input
-                          type="number"
-                          min={minContribution}
-                          max={maxContribution}
-                          step={0.01}
-                          value={contributionAmount}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                            const val = parseFloat(e.target.value);
-                            if (!isNaN(val) && val >= minContribution && val <= maxContribution) {
-                              setContributionAmount(val);
-                            }
-                          }}
-                          style={{ 
-                            padding: "8px 12px", 
-                            border: "1px solid #e5e5e5", 
-                            borderRadius: "8px", 
-                            fontSize: "16px",
-                            fontWeight: 600,
-                            width: "120px"
-                          }}
-                        />
-                        <span style={{ fontSize: "14px", color: "#666" }}>
-                          Remaining: {formatCurrency(remainingAmount)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {isCommitToClaim && remainingAmount <= 0 && (
-                    <div style={{ fontSize: "14px", color: "#666", padding: "12px", backgroundColor: "#f8f8f8", borderRadius: "8px", border: "1px solid #e5e5e5" }}>
-                      ✅ Pool fully funded!
-                    </div>
-                  )}
-
                   {/* Join Button */}
                   <Button
                     style={{ width: "100%" }}
                     size="lg"
                     onClick={handleJoinPool}
-                    disabled={progressPercentage >= 100 || isJoining || (isCommitToClaim && remainingAmount <= 0)}
+                    disabled={progressPercentage >= 100 || isJoining}
                   >
                     {isJoining 
                       ? "Joining..." 
                       : progressPercentage >= 100 
                         ? "Pool Filled" 
-                        : `Join for ${formatCurrency(isCommitToClaim ? contributionAmount : pool.entryAmount)}`}
+                        : `Join for ${formatCurrency(pool.entryAmount)}`}
                   </Button>
 
-                  {spotsLeft > 0 && spotsLeft <= 5 && (
+                  {isLuckyDraw && spotsLeft > 0 && spotsLeft <= 5 && (
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#ff6600", fontSize: "14px" }}>
                       <AlertCircle size={16} />
                       <span>Only {spotsLeft} spots left!</span>

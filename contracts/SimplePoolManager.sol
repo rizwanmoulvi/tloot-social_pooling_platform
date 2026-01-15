@@ -29,10 +29,10 @@ contract SimplePoolManager is ERC20, Ownable, ReentrancyGuard {
         PoolStatus status;
         address creator;
         string eventName;
-        uint256 entryAmount;
-        uint256 ticketPrice;
+        uint256 entryAmount;        // Commitment amount for CommitToClaim, entry for LuckyDraw
+        uint256 ticketPrice;        // Full ticket price for CommitToClaim
         uint256 maxParticipants;
-        uint256 deadline;
+        uint256 deadline;           // Deadline for joining (LuckyDraw) or payment completion (CommitToClaim)
         uint256 totalPooled;
         address winner;
         address[] participants;
@@ -41,9 +41,11 @@ contract SimplePoolManager is ERC20, Ownable, ReentrancyGuard {
     mapping(uint256 => Pool) public pools;
     mapping(uint256 => mapping(address => bool)) public hasJoined;
     mapping(uint256 => mapping(address => uint256)) public contributions;
+    mapping(uint256 => mapping(address => bool)) public hasCompletedPayment; // For CommitToClaim payment tracking
     
     event PoolCreated(uint256 indexed poolId, PoolType poolType, address creator, string eventName);
     event UserJoined(uint256 indexed poolId, address indexed user, uint256 amount, uint256 tlootMinted);
+    event PaymentCompleted(uint256 indexed poolId, address indexed user, uint256 remainingAmount);
     event WinnerSelected(uint256 indexed poolId, address indexed winner);
     event PoolFinalized(uint256 indexed poolId);
     event PoolCancelled(uint256 indexed poolId);
@@ -85,10 +87,11 @@ contract SimplePoolManager is ERC20, Ownable, ReentrancyGuard {
     }
     
     /**
-     * @dev Join a pool with variable contribution (for CommitToClaim) or fixed entry (for LuckyDraw)
-     * @param amount Amount to contribute (ignored for LuckyDraw, uses entryAmount)
+     * @dev Join a pool with commitment payment
+     * For both pool types, users pay the fixed entryAmount
+     * For CommitToClaim, this is just the commitment - full payment comes later
      */
-    function joinPool(uint256 poolId, uint256 amount) external nonReentrant {
+    function joinPool(uint256 poolId) external nonReentrant {
         Pool storage pool = pools[poolId];
         
         require(pool.id != 0, "Pool does not exist");
@@ -96,33 +99,12 @@ contract SimplePoolManager is ERC20, Ownable, ReentrancyGuard {
         require(block.timestamp < pool.deadline, "Pool expired");
         require(!hasJoined[poolId][msg.sender], "Already joined");
         
-        uint256 contributionAmount;
-        
-        if (pool.poolType == PoolType.LuckyDraw) {
-            // Lucky Draw: fixed entry amount, limited participants
-            require(pool.participants.length < pool.maxParticipants, "Pool full");
-            contributionAmount = pool.entryAmount;
-        } else {
-            // CommitToClaim: variable contribution, unlimited participants
-            require(amount > 0, "Amount must be greater than 0");
-            
-            uint256 remaining = pool.ticketPrice - pool.totalPooled;
-            require(remaining > 0, "Pool already fully funded");
-            
-            // Minimum 1 USDT (1e6 in 6 decimals)
-            require(amount >= 1e6, "Minimum contribution is 1 USDT");
-            
-            // Maximum 80% of remaining
-            uint256 maxContribution = (remaining * 80) / 100;
-            require(amount <= maxContribution, "Cannot contribute more than 80% of remaining");
-            
-            // Don't allow overfunding
-            if (amount > remaining) {
-                amount = remaining;
-            }
-            
-            contributionAmount = amount;
+        // For both pool types: check participant limit
+        if (pool.participants.length >= pool.maxParticipants) {
+            revert("Pool full");
         }
+        
+        uint256 contributionAmount = pool.entryAmount;
         
         // Transfer USDT from user
         require(
@@ -136,18 +118,47 @@ contract SimplePoolManager is ERC20, Ownable, ReentrancyGuard {
         contributions[poolId][msg.sender] = contributionAmount;
         pool.totalPooled += contributionAmount;
         
-        // Check if pool is now fully funded (for CommitToClaim)
-        if (pool.poolType == PoolType.CommitToClaim && pool.totalPooled >= pool.ticketPrice) {
-            pool.status = PoolStatus.Finalized;
-            emit PoolFinalized(poolId);
-        }
-        
         // Mint TLOOT tokens 1:1 with USDT (accounting for decimals: USDT=6, TLOOT=18)
         uint256 tlootAmount = contributionAmount * 10**12;
         require(totalSupply() + tlootAmount <= MAX_TLOOT_SUPPLY, "Max supply exceeded");
         _mint(msg.sender, tlootAmount);
         
         emit UserJoined(poolId, msg.sender, contributionAmount, tlootAmount);
+    }
+    
+    /**
+     * @dev Complete payment for CommitToClaim pool (pay remaining amount after initial commitment)
+     * @param poolId The ID of the pool
+     */
+    function completePayment(uint256 poolId) external nonReentrant {
+        Pool storage pool = pools[poolId];
+        
+        require(pool.poolType == PoolType.CommitToClaim, "Only for CommitToClaim pools");
+        require(pool.status == PoolStatus.Finalized, "Pool not finalized yet");
+        require(hasJoined[poolId][msg.sender], "Not a participant");
+        require(!hasCompletedPayment[poolId][msg.sender], "Payment already completed");
+        require(block.timestamp < pool.deadline, "Payment deadline passed");
+        
+        // Calculate remaining amount to pay
+        uint256 remainingAmount = pool.ticketPrice - pool.entryAmount;
+        
+        // Transfer remaining USDT from user
+        require(
+            usdtToken.transferFrom(msg.sender, address(this), remainingAmount),
+            "USDT transfer failed"
+        );
+        
+        // Mark payment as completed
+        hasCompletedPayment[poolId][msg.sender] = true;
+        contributions[poolId][msg.sender] += remainingAmount;
+        pool.totalPooled += remainingAmount;
+        
+        // Mint additional TLOOT for remaining payment
+        uint256 tlootAmount = remainingAmount * 10**12;
+        require(totalSupply() + tlootAmount <= MAX_TLOOT_SUPPLY, "Max supply exceeded");
+        _mint(msg.sender, tlootAmount);
+        
+        emit PaymentCompleted(poolId, msg.sender, remainingAmount);
     }
     
     /**
